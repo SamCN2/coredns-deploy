@@ -1,0 +1,11 @@
+Source: coredns11
+Maintainer: Miek Gieben <miek@coredns.io>
+Build-Depends: debhelper (>= 9), ca-certificates, curl, base-files (>= 11.1~) | dh-systemd, lsb-release, jq
+
+Package: coredns11
+Architecture: any
+Section: net
+Priority: optional
+Description: CoreDNS DNS server (OGT11 Custom Build)
+ The package is self-contained in /opt/coredns and does not install into /usr or /etc.
+Depends: ${misc:Depends}, adduser, libcap2-bin

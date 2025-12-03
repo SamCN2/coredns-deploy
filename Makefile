@@ -13,11 +13,11 @@ endif
 .PHONY: debian
 debian:
 	for a in $(ARCH); do \
-	    dpkg-buildpackage -us -uc -b --target-arch $$a ;\
+	    cd deb-systemd && dpkg-buildpackage -us -uc -b --target-arch $$a ;\
 	done
 
 debian-clean:
-	rm *.tgz
+	cd deb-systemd && rm -f *.tgz
 
 .PHONY: redhat
 redhat:

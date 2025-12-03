@@ -1,0 +1,25 @@
+[Unit]
+Description=CoreDNS DNS server (OGT11 Custom Build)
+Documentation=https://coredns.io/manual/
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+# Permissions & Capabilities
+# Critical: Allow binding to port 53 without running as root
+AmbientCapabilities=CAP_NET_BIND_SERVICE
+CapabilityBoundingSet=CAP_NET_BIND_SERVICE
+User=coredns
+Group=coredns
+
+# Execution
+# Must point to the /opt path and the /opt config
+ExecStart=/opt/coredns/bin/coredns -conf /opt/coredns/etc/Corefile
+
+# Resilience
+Restart=on-failure
+RestartSec=5s
+LimitNOFILE=1048576
+
+[Install]
+WantedBy=multi-user.target

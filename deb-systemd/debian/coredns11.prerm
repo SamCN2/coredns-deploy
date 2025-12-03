@@ -1,0 +1,9 @@
+#!/bin/sh
+set -e
+
+if [ -d /run/systemd/system ]; then
+    systemctl stop coredns11.service || true
+    systemctl disable coredns11.service || true
+fi
+
+#DEBHELPER#
