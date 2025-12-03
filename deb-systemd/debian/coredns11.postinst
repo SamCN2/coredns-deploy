@@ -1,0 +1,30 @@
+#!/bin/sh
+set -e
+
+# Create User/Group
+if ! getent group coredns >/dev/null; then
+    groupadd --system coredns
+fi
+
+if ! getent passwd coredns >/dev/null; then
+    useradd --system --gid coredns --home-dir /opt/coredns/var --no-create-home --shell /bin/false coredns
+fi
+
+# Directory Hygiene
+mkdir -p /opt/coredns/etc
+mkdir -p /opt/coredns/var
+
+chown -R coredns:coredns /opt/coredns/var
+
+# PKI Prep
+mkdir -p /opt/coredns/etc/pki
+chown root:coredns /opt/coredns/etc/pki
+chmod 0750 /opt/coredns/etc/pki
+
+# Systemd
+if [ -d /run/systemd/system ]; then
+    systemctl daemon-reload
+    systemctl unmask coredns11.service
+fi
+
+#DEBHELPER#
