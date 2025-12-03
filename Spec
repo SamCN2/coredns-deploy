@@ -1,0 +1,96 @@
+Functional Specification: CoreDNS Packaging Refactor (OGT11 Standard)
+
+Target Audience: Jules (Developer)
+Project: CoreDNS Custom Package (coredns11)
+Goal: Refactor the existing Debian packaging and Systemd unit files to align with the OGT11 "Side-by-Side" operational standard.
+
+1. Overview
+
+We are building a custom .deb package for CoreDNS. Unlike standard distribution packages, this package must not install into /usr or /etc. 
+It must be entirely self-contained within /opt/coredns to avoid conflicts with system packages and allow for atomic updates.
+
+2. Filesystem Layout (The OGT11 Standard)
+
+The package must create and install artifacts into the following structure. Do not use standard system paths like /usr/bin.
+
+Component     Standard Path                  OGT11 Path                            Permission
+Binary        /usr/bin/coredns               /opt/coredns/bin/coredns              0755 (root:root)
+Config        /etc/coredns/Corefile          /opt/coredns/etc/Corefile             0644 (root:root)
+Data/Home     /var/lib/coredns               /opt/coredns/var                      0750 (coredns:coredns)
+Unit File     /{lib,etc}/systemd/system/...  lib/systemd/system/coredns11.service  0644 (root:root)
+
+3. Systemd Unit Specification (coredns11.service)
+
+You must rename the service definition to coredns11.service to prevent collision with the Ubuntu coredns package.
+
+Required Unit Configuration:
+
+[Unit]
+Description=CoreDNS DNS server (OGT11 Custom Build)
+Documentation=[https://coredns.io/manual/](https://coredns.io/manual/)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+# Permissions & Capabilities
+# Critical: Allow binding to port 53 without running as root
+AmbientCapabilities=CAP_NET_BIND_SERVICE
+CapabilityBoundingSet=CAP_NET_BIND_SERVICE
+User=coredns
+Group=coredns
+
+# Execution
+# Must point to the /opt path and the /opt config
+ExecStart=/opt/coredns/bin/coredns -conf /opt/coredns/etc/Corefile
+
+# Resilience
+Restart=on-failure
+RestartSec=5s
+LimitNOFILE=1048576
+
+[Install]
+WantedBy=multi-user.target
+
+
+4. Debian Control Scripts
+
+4.1 postinst (User Creation & Setup)
+
+The post-install script must be idempotent.
+
+Create User/Group: Create system user coredns if it does not exist.
+
+Home directory: /opt/coredns/var (Do not create home in /home).
+
+Shell: /bin/false.
+
+Directory Hygiene:
+
+Ensure /opt/coredns/etc and /opt/coredns/var exist.
+
+chown -R coredns:coredns /opt/coredns/var.
+
+PKI Prep: Create /opt/coredns/etc/pki with root:coredns ownership and 0750 permissions (so the daemon can read certs deployed later).
+
+Systemd:
+
+systemctl daemon-reload.
+
+Unmask coredns11.service.
+
+Note: Do not enable/start the service automatically. Leave that to the configuration management layer (Ansible).
+
+4.2 prerm (Cleanup)
+
+Stop Service: systemctl stop coredns11.
+
+Disable Service: systemctl disable coredns11.
+
+5. Build Deliverables
+
+Refactor the build script (e.g., build.sh or Makefile) to produce a package named:
+coredns11_<VERSION>_amd64.deb
+
+Dependencies: Ensure libcap2-bin or libcap is listed in the control file Depends field if required for capability setting, though systemd usually handles AmbientCapabilities natively without extra packages.
+
+Conflict: The package should not declare a conflict with coredns (system), as they should be able to coexist (listening on different ports if necessary during migration).
